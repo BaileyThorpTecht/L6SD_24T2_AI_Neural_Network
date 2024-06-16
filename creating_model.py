@@ -13,20 +13,30 @@ from joblib import load
 import tensorflow as tf
 import keras
 
-#make the model work well
-#remember to upload on the other repo
+def GetData():
+    return pd.read_csv("Car_Purchasing_Data.csv")
+
+def RemoveIrrelevantData(data):
+    input = dataset.filter(["Age", "Annual Salary", "Credit Card Debt", "Net Worth"])
+    output = dataset.filter(["Car Purchase Amount"])
+    return input, output
+
 def RunModel (model, Xtrain, Xtest, Ytrain, Ytest, sc):
     #train and test the model
-    model.fit(Xtrain, Ytrain)    
+    if type(model).__name__ == "Sequential":    
+        model.fit(Xtrain, Ytrain, epochs=20)
+    else:
+        model.fit(Xtrain, Ytrain)
+    
     predictions = model.predict(Xtest)
     
     #turn predictions and Ytest back into normal values
+    inv_Ytest = scOutput.inverse_transform(Ytest)
     try:
         inv_predictions = scOutput.inverse_transform(predictions)
     except:
         inv_predictions = scOutput.inverse_transform([predictions])[0]
 
-    inv_Ytest = scOutput.inverse_transform(Ytest)
     
     #make scatter chart for the custom model
     if type(model).__name__ == "Sequential":    
@@ -38,7 +48,7 @@ def RunModel (model, Xtrain, Xtest, Ytrain, Ytest, sc):
         ax.set_xlim([0, 100000])
         ax.set_ylim([0, 100000])
         plt.show()
-    
+     
     #get rmse from model's performance
     scaleRMSE = True 
     if scaleRMSE:
@@ -50,14 +60,14 @@ def RunModel (model, Xtrain, Xtest, Ytrain, Ytest, sc):
 
 
 def CustomModel(x_train):
+    
     #creating the model and adding layers to it
     model = keras.models.Sequential()
     model.add(keras.layers.Dense(units=320, activation='relu', input_dim=len(x_train.columns)))
-    #model.add(keras.layers.Dropout(0.2))
+    model.add(keras.layers.Dropout(0.2))
     model.add(keras.layers.Dense(units=640, activation='relu'))
-    #model.add(keras.layers.Dropout(0.2))
-    model.add(keras.layers.Dense(units=640, activation='relu'))
-    #model.add(keras.layers.Dropout(0.2))
+    model.add(keras.layers.Dropout(0.2))
+
     model.add(keras.layers.Dense(units=1, activation='sigmoid'))
 
     model.compile(loss="binary_crossentropy", optimizer="adam")    
@@ -66,18 +76,15 @@ def CustomModel(x_train):
     return model
 
 
+    
+
+
 
 
 #import dataset
-dataset = pd.read_csv("Car_Purchasing_Data.csv")
+dataset = GetData()
  
-#creating input data set by removing irrelevant columns
-#### input => X ####
-inputData = dataset.filter(["Age", "Annual Salary", "Credit Card Debt", "Net Worth"])
-
-#creating output dataset
-#### output => Y ####
-outputData = dataset.filter(["Car Purchase Amount"])
+inputData, outputData = RemoveIrrelevantData(dataset)
 
 #scale input and output
 scInput = MinMaxScaler()
@@ -91,11 +98,6 @@ outputScaled = pd.DataFrame(outputScaled)
 
 #separate into training data and testing data
 inputTrain, inputTest, outputTrain, outputTest = train_test_split(inputScaled, outputScaled, test_size=0.2, random_state=37)
-
-
-
-
-
 
 #initializing 10 models + custom
 modelList = []
