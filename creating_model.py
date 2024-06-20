@@ -16,26 +16,32 @@ import keras
 def GetData():
     return pd.read_csv("Car_Purchasing_Data.csv")
 
-def RemoveIrrelevantData(data):
-    input = dataset.filter(["Age", "Annual Salary", "Credit Card Debt", "Net Worth"])
-    output = dataset.filter(["Car Purchase Amount"])
+def GetChosenColumns():
+    forbidden = ['Customer Name', 'Customer e-mail', 'Country', 'Gender']
+    output = ['Car Purchase Amount']
+    
+    return forbidden, output
+
+def RemoveIrrelevantData(data, forbiddenCols, outputCol):
+    output = data.copy().filter(outputCol)
+    input = data.drop(forbiddenCols + outputCol, axis=1)
     return input, output
 
 def RunModel (model, Xtrain, Xtest, Ytrain, Ytest, sc):
     #train and test the model
     if type(model).__name__ == "Sequential":    
-        model.fit(Xtrain, Ytrain, epochs=20)
+        model.fit(Xtrain, Ytrain, epochs=200)
     else:
         model.fit(Xtrain, Ytrain)
     
     predictions = model.predict(Xtest)
     
     #turn predictions and Ytest back into normal values
-    inv_Ytest = scOutput.inverse_transform(Ytest)
+    inv_Ytest = sc.inverse_transform(Ytest)
     try:
-        inv_predictions = scOutput.inverse_transform(predictions)
+        inv_predictions = sc.inverse_transform(predictions)
     except:
-        inv_predictions = scOutput.inverse_transform([predictions])[0]
+        inv_predictions = sc.inverse_transform([predictions])[0]
 
     
     #make scatter chart for the custom model
@@ -63,10 +69,11 @@ def CustomModel(x_train):
     
     #creating the model and adding layers to it
     model = keras.models.Sequential()
-    model.add(keras.layers.Dense(units=320, activation='relu', input_dim=len(x_train.columns)))
-    model.add(keras.layers.Dropout(0.2))
-    model.add(keras.layers.Dense(units=640, activation='relu'))
-    model.add(keras.layers.Dropout(0.2))
+    model.add(keras.layers.Dense(units=32, activation='relu', input_dim=len(x_train.columns)))
+    model.add(keras.layers.Dense(units=64, activation='relu'))
+    model.add(keras.layers.Dense(units=64, activation='relu'))
+    model.add(keras.layers.Dense(units=64, activation='relu'))
+    #model.add(keras.layers.Dropout(0.2))
 
     model.add(keras.layers.Dense(units=1, activation='sigmoid'))
 
@@ -83,8 +90,10 @@ def CustomModel(x_train):
 
 #import dataset
 dataset = GetData()
- 
-inputData, outputData = RemoveIrrelevantData(dataset)
+
+#filter dataset
+forbiddenColumns, outputColumn = GetChosenColumns()
+inputData, outputData = RemoveIrrelevantData(dataset, forbiddenColumns, outputColumn)
 
 #scale input and output
 scInput = MinMaxScaler()
